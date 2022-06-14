@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig, Method } from "axios";
+import axios, { AxiosRequestConfig, Method, AxiosResponse } from "axios";
 import { plainToClass } from "class-transformer";
 import { Settings } from "../../poe";
 
@@ -26,6 +26,38 @@ export const request = async (
         const data = <string>response.data;
 
         return stripByteOrderMark(data);
+    } catch (error: unknown) {
+        if (axios.isAxiosError(error) && error.response) {
+            if (url.host.includes("pathofexile.com")) {
+                const data = <ExternalAPIError>JSON.parse(error.response.data);
+                throw new APIError(data);
+            }
+        }
+
+        throw error;
+    }
+};
+
+
+export const requestResponse = async (
+    url: URL,
+    method: Method = "get",
+    payload: unknown = {}
+): Promise<AxiosResponse> => {
+    try {
+        const config: AxiosRequestConfig = {
+            url: url.toString(),
+            method: method,
+            headers: buildHeaders(url),
+            data: payload,
+            transformResponse: [
+                (data: string): string => {
+                    return data;
+                },
+            ],
+        };
+
+        return axios(config);
     } catch (error: unknown) {
         if (axios.isAxiosError(error) && error.response) {
             if (url.host.includes("pathofexile.com")) {

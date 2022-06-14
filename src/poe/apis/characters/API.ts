@@ -1,8 +1,9 @@
-import { buildURL, requestTransformed, requestTransformedArray } from "../../../common/functions";
+import { buildURL, requestTransformed, requestTransformedArray, requestResponse } from "../../../common/functions";
 import { RealmOptions } from "../../shared/models";
 import { Character } from "./Character";
 import { Items } from "./Items";
 import { PassiveSkills } from "./PassiveSkills";
+import { AxiosResponse } from "axios";
 
 /**
  * @remarks
@@ -64,11 +65,48 @@ export const getPassiveSkills = async (
     options?: RealmOptions
 ): Promise<PassiveSkills> => {
     const url = buildURL(
-        `https://api.pathofexile.com/character-window/get-passive-skills`,
+        `https://www.pathofexile.com/character-window/get-passive-skills`,
         options,
         null,
-        { accountName, character }
+        { accountName, character, reqData: "0" }
     );
 
     return await requestTransformed(PassiveSkills, url);
+};
+
+
+/**
+ * @remarks
+ *
+ * @endpoint https://api.pathofexile.com/character-window/view-atlas-skill-tree
+ * @param accountName
+ * @param realm
+ * @param league
+ * @throws [[APIError]]
+ */
+export const getNAtlasSkills = async (
+    accountName: string,
+    realm: string,
+    league: string
+): Promise<number> => {
+    const url = buildURL(
+        `https://www.pathofexile.com/character-window/view-atlas-skill-tree`,
+        null,
+        null,
+        { accountName, realm, league }
+    );
+
+    let response: AxiosResponse;
+    response = await requestResponse(url);
+
+    let encodedTree: string;
+
+    encodedTree = response.request.res.socket._httpMessage.path.replace('/fullscreen-atlas-skill-tree/', '');
+    encodedTree = encodedTree.replace('-', '+').replace('_', '/');
+    while (encodedTree.length % 4){
+        encodedTree += '=';
+    }
+    const buffer = Buffer.from(encodedTree || '', 'base64').toString('hex')
+
+    return parseInt(buffer.substring(12,14), 16);
 };
